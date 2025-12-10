@@ -16,6 +16,7 @@ public class TrackingController {
     public ResponseEntity<?> device(HttpServletRequest r, @RequestBody(required = false) Map<String, Object> payload) {
         VisitorInfo v = new VisitorInfo();
         String ip = r.getRemoteAddr();
+        System.out.println("Received tracking from IP: " + ip);
         v.setIp(ip);
         v.setCountry(geo.getCountry(ip));
         v.setCity(geo.getCity(ip));
