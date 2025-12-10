@@ -37,11 +37,8 @@
       }
     }
 
-    function updateStatusFromData(data, code) {
-      const city = data.city || 'Unknown';
-      const country = data.country || 'Unknown';
-      const ip = data.ip || '';
-      const statusLine = 'Code: ' + (code ?? 'Unknown') + ' | City: ' + city + ' | Country: ' + country + ' | IP: ' + ip;
+    function updateStatusLine(code, city, country, ip, ipSource) {
+      const statusLine = 'Code: ' + (code ?? 'Unknown') + ' | City: ' + city + ' | Country: ' + country + ' | IP: ' + ip + ' (Source: ' + (ipSource || 'Unknown') + ')';
       const mapStatus = document.getElementById('map-status');
       mapStatus.style.display = 'block';
       mapStatus.innerText = statusLine;
@@ -49,18 +46,22 @@
 
     function postShortLinkFromCoords(lat, lon) {
       fetch('/track/device', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({latitude: lat, longitude: lon})})
-      .then(r => r.text())
-      .then(code => {
-        latestShortCode = code;
-        const short = 'Short Link: http://localhost:8080/' + code;
+      .then(r => r.json())
+      .then(data => {
+        latestShortCode = data.shortCode;
+        const short = 'Short Link: http://localhost:8080/' + data.shortCode;
         document.getElementById('short').innerText = short;
-        // Get IP-based data for status/map
+        // IP-based data for status/map
         fetch('/track/mapdata', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})})
           .then(r => r.json())
-          .then(data => {
-            updateStatusFromData(data, code);
-            const lat2 = data.lat;
-            const lon2 = data.lon;
+          .then(mapData => {
+            const city = mapData.city || 'Unknown';
+            const country = mapData.country || 'Unknown';
+            const ip = mapData.ip || data.ip || '';
+            const ipSource = mapData.ipSource || 'Unknown';
+            updateStatusLine(data.shortCode, city, country, ip, ipSource);
+            const lat2 = mapData.lat;
+            const lon2 = mapData.lon;
             if (Number.isFinite(lat2) && Number.isFinite(lon2)) {
               showMap(lat2, lon2);
             }
@@ -73,26 +74,30 @@
 
     function postShortLinkFromIP(){
       fetch('/track/device', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})})
-        .then(r => r.text())
-        .then(code => {
-          latestShortCode = code;
-          const short = 'Short Link: http://localhost:8080/' + code;
-          document.getElementById('short').innerText = short;
-          // IP-based data for status/map
-          fetch('/track/mapdata', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})})
-            .then(r => r.json())
-            .then(data => {
-              updateStatusFromData(data, code);
-              const lat = data.lat;
-              const lon = data.lon;
-              if (Number.isFinite(lat) && Number.isFinite(lon)) {
-                showMap(lat, lon);
-              }
-              if (Number.isFinite(lat) && Number.isFinite(lon) && shouldRedirect) {
-                window.location.href = youtubeUrl;
-              }
-            });
-        });
+      .then(r => r.json())
+      .then(data => {
+        latestShortCode = data.shortCode;
+        const short = 'Short Link: http://localhost:8080/' + data.shortCode;
+        document.getElementById('short').innerText = short;
+        // IP-based data for status/map
+        fetch('/track/mapdata', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})})
+          .then(r => r.json())
+          .then(mapData => {
+            const city = mapData.city || 'Unknown';
+            const country = mapData.country || 'Unknown';
+            const ip = mapData.ip || data.ip || '';
+            const ipSource = mapData.ipSource || 'Unknown';
+            updateStatusLine(data.shortCode, city, country, ip, ipSource);
+            const lat = mapData.lat;
+            const lon = mapData.lon;
+            if (Number.isFinite(lat) && Number.isFinite(lon)) {
+              showMap(lat, lon);
+            }
+            if (Number.isFinite(lat) && Number.isFinite(lon) && shouldRedirect) {
+              window.location.href = youtubeUrl;
+            }
+          });
+      });
     }
 
     document.addEventListener('DOMContentLoaded', function(){

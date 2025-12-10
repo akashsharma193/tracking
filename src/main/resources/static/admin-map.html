@@ -24,11 +24,12 @@
           const v = list[list.length - 1];
           const parts = [];
           if (v.shortCode) parts.push('Code: ' + v.shortCode);
-          if (v.city) parts.push('City: ' + v.city); 
+          if (v.city) parts.push('City: ' + v.city);
           if (v.country) parts.push('Country: ' + v.country);
-          // IP address from GeoIP data (unknown if not available)
+          // IP address and its source
           const ip = v.ip || 'Unknown';
-          parts.push('IP: ' + ip);
+          const ipSource = v.ipSource || 'Unknown';
+          parts.push('IP: ' + ip + ' (Source: ' + ipSource + ')');
           // Lat/Lon if available
           if (typeof v.latitude === 'number' && typeof v.longitude === 'number') {
             parts.push('Lat: ' + v.latitude, 'Lon: ' + v.longitude);

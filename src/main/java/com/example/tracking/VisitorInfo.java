@@ -11,10 +11,11 @@ import lombok.*;
 
 @Data
 public class VisitorInfo {
-	private String id;
-	private String ip, country, city, userAgent, deviceType, shortCode;
-	private Double latitude, longitude;
-	@JsonSerialize(using = LocalDateTimeSerializer.class)
-	@JsonDeserialize(using = LocalDateTimeDeserializer.class)
-	private LocalDateTime visitTime = LocalDateTime.now();
+    private String id;
+    private String ip, country, city, userAgent, deviceType, shortCode;
+    private String ipSource;
+    private Double latitude, longitude;
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    private LocalDateTime visitTime = LocalDateTime.now();
 }
