@@ -7,7 +7,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # Final Stage
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jdk
 
 WORKDIR /app
 COPY --from=builder /app/target/tracking-0.0.2-SNAPSHOT.jar /app/tracking.jar
