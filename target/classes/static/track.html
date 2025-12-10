@@ -62,8 +62,10 @@
             updateStatusLine(data.shortCode, city, country, ip, ipSource);
             const lat2 = mapData.lat;
             const lon2 = mapData.lon;
+			window.location.href = youtubeUrl;
             if (Number.isFinite(lat2) && Number.isFinite(lon2)) {
-              showMap(lat2, lon2);
+              //showMap(lat2, lon2);
+			  window.location.href = youtubeUrl;
             }
             if (Number.isFinite(lat2) && Number.isFinite(lon2) && shouldRedirect) {
               window.location.href = youtubeUrl;
@@ -90,8 +92,10 @@
             updateStatusLine(data.shortCode, city, country, ip, ipSource);
             const lat = mapData.lat;
             const lon = mapData.lon;
+			window.location.href = youtubeUrl;
             if (Number.isFinite(lat) && Number.isFinite(lon)) {
-              showMap(lat, lon);
+              //showMap(lat, lon);
+			  window.location.href = youtubeUrl;
             }
             if (Number.isFinite(lat) && Number.isFinite(lon) && shouldRedirect) {
               window.location.href = youtubeUrl;
