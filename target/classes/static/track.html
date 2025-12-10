@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head><title>Tracking Page</title></head>
+<body>
+  <h2>Tracking Page</h2>
+  <p id="short"></p>
+  <script>
+    function postShortLink(lat, lon){
+      fetch('/track/device', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({latitude: lat, longitude: lon})})
+      .then(r => r.text())
+      .then(c => { document.getElementById('short').innerText = 'Short Link: http://localhost:8080/' + c; });
+    }
+
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(function(pos){
+        postShortLink(pos.coords.latitude, pos.coords.longitude);
+      }, function(err){
+        // fallback to simple IP-based tracking
+        fetch('/track/device')
+          .then(r => r.text())
+          .then(c => { document.getElementById('short').innerText = 'Short Link: http://localhost:8080/' + c; });
+      });
+    } else {
+      fetch('/track/device')
+        .then(r => r.text())
+        .then(c => { document.getElementById('short').innerText = 'Short Link: http://localhost:8080/' + c; });
+    }
+  </script>
+</body>
+</html>
